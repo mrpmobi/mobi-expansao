@@ -32,7 +32,7 @@ export function StatCard({
     <Card className={cn("overflow-hidden transition-all hover:shadow-md", colorClass)}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className={cn("text-sm font-medium", colorClass ? "text-white/80" : "text-foreground/70")}>{title}</p>
           <div className={cn("rounded-lg p-2", colorClass ? "bg-white/20" : "bg-primary/10")}>
             <Icon className={cn("h-5 w-5", colorClass ? "text-white" : "text-primary")} />
           </div>
