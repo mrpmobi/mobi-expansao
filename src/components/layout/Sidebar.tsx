@@ -8,6 +8,7 @@ import {
   Trophy,
   Handshake,
   FileText,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
@@ -23,6 +24,7 @@ const menuItems = [
   { to: "/programa", icon: Calendar, label: "Programa de 4 Semanas" },
   { to: "/classificacao", icon: Trophy, label: "Classificação" },
   { to: "/reunioes", icon: Handshake, label: "Reuniões" },
+  { to: "/roteiro", icon: BookOpen, label: "Roteiro do Programa" },
   { to: "/relatorios", icon: FileText, label: "Relatórios" },
 ]
 

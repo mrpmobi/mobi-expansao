@@ -9,6 +9,7 @@ import { ProgramaSemanasPage } from "@/pages/ProgramaSemanas/ProgramaSemanasPage
 import { ClassificacaoPage } from "@/pages/Classificacao/ClassificacaoPage"
 import { ReunioesPage } from "@/pages/Reunioes/ReunioesPage"
 import { RelatoriosPage } from "@/pages/Relatorios/RelatoriosPage"
+import { RoteiroPage } from "@/pages/Roteiro/RoteiroPage"
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/programa" element={<ProgramaSemanasPage />} />
             <Route path="/classificacao" element={<ClassificacaoPage />} />
             <Route path="/reunioes" element={<ReunioesPage />} />
+            <Route path="/roteiro" element={<RoteiroPage />} />
             <Route path="/relatorios" element={<RelatoriosPage />} />
           </Route>
         </Routes>
