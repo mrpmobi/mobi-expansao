@@ -1,5 +1,5 @@
 import type { Lider, Cidade, SemanaPrograma, FeedbackItem, Classificacao, ProgramStatus } from "@/types"
-import type { InValue } from "@libsql/client"
+import type { InValue, ResultSet } from "@libsql/client"
 import { db } from "@/lib/db"
 
 function calcularScore(itens: FeedbackItem[]): number {
@@ -46,12 +46,8 @@ function gerarFeedback(score: number, classificacao: Classificacao): string {
   return partes.join(" ")
 }
 
-async function getCidadesByLider(liderId: string): Promise<Cidade[]> {
-  const result = await db.execute({
-    sql: "SELECT * FROM cidades WHERE liderId = ?",
-    args: [liderId],
-  })
-  return result.rows.map((r) => ({
+function rowToCidade(r: Record<string, unknown>): Cidade {
+  return {
     id: r.id as string,
     nome: r.nome as string,
     estado: r.estado as string,
@@ -62,15 +58,11 @@ async function getCidadesByLider(liderId: string): Promise<Cidade[]> {
     ticketMedio: r.ticketMedio as number,
     metaCorridas: r.metaCorridas as number,
     observacoes: r.observacoes as string,
-  }))
+  }
 }
 
-async function getSemanasByLider(liderId: string): Promise<SemanaPrograma[]> {
-  const result = await db.execute({
-    sql: "SELECT * FROM semanas WHERE liderId = ? ORDER BY semana",
-    args: [liderId],
-  })
-  return result.rows.map((r) => ({
+function rowToSemana(r: Record<string, unknown>): SemanaPrograma {
+  return {
     semana: r.semana as number,
     tipo: r.tipo as SemanaPrograma["tipo"],
     objetivo: r.objetivo as string,
@@ -80,30 +72,25 @@ async function getSemanasByLider(liderId: string): Promise<SemanaPrograma[]> {
     observacoes: r.observacoes as string,
     nota: r.nota as number,
     concluida: (r.concluida as number) === 1,
-  }))
+  }
 }
 
-async function getFeedbackItensByLider(liderId: string): Promise<FeedbackItem[]> {
-  const result = await db.execute({
-    sql: "SELECT * FROM feedback_itens WHERE liderId = ?",
-    args: [liderId],
-  })
-  return result.rows.map((r) => ({
+function rowToFeedbackItem(r: Record<string, unknown>): FeedbackItem {
+  return {
     criterio: r.criterio as string,
     nota: r.nota as number,
     peso: r.peso as number,
-  }))
+  }
 }
 
-async function getLiderCompleto(row: Record<string, unknown>): Promise<Lider> {
-  const id = row.id as string
-  const [cidades, semanas, feedbackItens] = await Promise.all([
-    getCidadesByLider(id),
-    getSemanasByLider(id),
-    getFeedbackItensByLider(id),
-  ])
+function rowToLider(
+  row: Record<string, unknown>,
+  cidades: Cidade[],
+  semanas: SemanaPrograma[],
+  feedbackItens: FeedbackItem[]
+): Lider {
   return {
-    id,
+    id: row.id as string,
     nome: row.nome as string,
     telefone: row.telefone as string,
     whatsApp: row.whatsApp as string,
@@ -124,23 +111,64 @@ async function getLiderCompleto(row: Record<string, unknown>): Promise<Lider> {
   }
 }
 
+async function loadLiderBatch(liderIds: string[]): Promise<Lider[]> {
+  if (liderIds.length === 0) return []
+
+  const stmts = [
+    { sql: `SELECT * FROM lideres WHERE id IN (${liderIds.map(() => "?").join(",")}) ORDER BY id`, args: liderIds as InValue[] },
+    ...liderIds.flatMap((id) => [
+      { sql: "SELECT * FROM cidades WHERE liderId = ?", args: [id] as InValue[] },
+      { sql: "SELECT * FROM semanas WHERE liderId = ? ORDER BY semana", args: [id] as InValue[] },
+      { sql: "SELECT * FROM feedback_itens WHERE liderId = ?", args: [id] as InValue[] },
+    ]),
+  ]
+
+  const results = await db.batch(stmts)
+  const liderRows = results[0].rows
+
+  const cidadesMap = new Map<string, Cidade[]>()
+  const semanasMap = new Map<string, SemanaPrograma[]>()
+  const feedbackMap = new Map<string, FeedbackItem[]>()
+
+  let idx = 1
+  for (const id of liderIds) {
+    cidadesMap.set(id, results[idx].rows.map(rowToCidade))
+    semanasMap.set(id, results[idx + 1].rows.map(rowToSemana))
+    feedbackMap.set(id, results[idx + 2].rows.map(rowToFeedbackItem))
+    idx += 3
+  }
+
+  return liderRows.map((row) =>
+    rowToLider(
+      row,
+      cidadesMap.get(row.id as string) || [],
+      semanasMap.get(row.id as string) || [],
+      feedbackMap.get(row.id as string) || []
+    )
+  )
+}
+
 export const liderService = {
   async getAll(): Promise<Lider[]> {
-    const result = await db.execute("SELECT * FROM lideres ORDER BY id")
-    const lideres: Lider[] = []
-    for (const row of result.rows) {
-      lideres.push(await getLiderCompleto(row))
-    }
-    return lideres
+    const result = await db.execute("SELECT id FROM lideres ORDER BY id")
+    const ids = result.rows.map((r) => r.id as string)
+    return loadLiderBatch(ids)
   },
 
   async getById(id: string): Promise<Lider | undefined> {
-    const result = await db.execute({
-      sql: "SELECT * FROM lideres WHERE id = ?",
-      args: [id],
-    })
-    if (result.rows.length === 0) return undefined
-    return getLiderCompleto(result.rows[0])
+    const results = await db.batch([
+      { sql: "SELECT * FROM lideres WHERE id = ?", args: [id] },
+      { sql: "SELECT * FROM cidades WHERE liderId = ?", args: [id] },
+      { sql: "SELECT * FROM semanas WHERE liderId = ? ORDER BY semana", args: [id] },
+      { sql: "SELECT * FROM feedback_itens WHERE liderId = ?", args: [id] },
+    ])
+    if (results[0].rows.length === 0) return undefined
+    return rowToLider(
+      results[0].rows[0],
+      results[1].rows.map(rowToCidade),
+      results[2].rows.map(rowToSemana),
+      results[3].rows.map(rowToFeedbackItem)
+    )
   },
 
   async create(data: Omit<Lider, "id" | "cidades" | "semanas" | "classificacao" | "score" | "feedback" | "feedbackItens" | "status">): Promise<Lider> {
@@ -151,21 +179,9 @@ export const liderService = {
     await db.execute({
       sql: `INSERT INTO lideres (id, nome, telefone, whatsApp, regiao, estado, status, mentorId, dataInicio, observacoes, classificacao, score, feedback, programStatus, dataInicioPrograma) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
-        newId,
-        data.nome,
-        data.telefone,
-        data.whatsApp,
-        data.regiao,
-        data.estado,
-        "ativo",
-        data.mentorId,
-        data.dataInicio,
-        data.observacoes,
-        "prata",
-        0,
-        "",
-        "nao_iniciado",
-        "",
+        newId, data.nome, data.telefone, data.whatsApp, data.regiao,
+        data.estado, "ativo", data.mentorId, data.dataInicio, data.observacoes,
+        "prata", 0, "", "nao_iniciado", "",
       ],
     })
 
@@ -175,13 +191,6 @@ export const liderService = {
       { semana: 3, tipo: "recuperacao" },
       { semana: 4, tipo: "avaliacao" },
     ]
-    for (const s of semanasIniciais) {
-      await db.execute({
-        sql: `INSERT INTO semanas (liderId, semana, tipo, objetivo, acoesPlanejadas, acoesExecutadas, dificuldades, observacoes, nota, concluida) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [newId, s.semana, s.tipo, "", "", "", "", "", 0, 0],
-      })
-    }
-
     const feedbackInicial = [
       { criterio: "Meta", peso: 30 },
       { criterio: "Comprometimento", peso: 20 },
@@ -190,12 +199,17 @@ export const liderService = {
       { criterio: "Participação", peso: 10 },
       { criterio: "Resultado", peso: 5 },
     ]
-    for (const f of feedbackInicial) {
-      await db.execute({
+
+    await db.batch([
+      ...semanasIniciais.map((s) => ({
+        sql: `INSERT INTO semanas (liderId, semana, tipo, objetivo, acoesPlanejadas, acoesExecutadas, dificuldades, observacoes, nota, concluida) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [newId, s.semana, s.tipo, "", "", "", "", "", 0, 0] as InValue[],
+      })),
+      ...feedbackInicial.map((f) => ({
         sql: `INSERT INTO feedback_itens (liderId, criterio, nota, peso) VALUES (?, ?, ?, ?)`,
-        args: [newId, f.criterio, 0, f.peso],
-      })
-    }
+        args: [newId, f.criterio, 0, f.peso] as InValue[],
+      })),
+    ])
 
     return (await this.getById(newId))!
   },
@@ -232,10 +246,12 @@ export const liderService = {
   },
 
   async delete(id: string): Promise<void> {
-    await db.execute({ sql: "DELETE FROM feedback_itens WHERE liderId = ?", args: [id] })
-    await db.execute({ sql: "DELETE FROM semanas WHERE liderId = ?", args: [id] })
-    await db.execute({ sql: "DELETE FROM cidades WHERE liderId = ?", args: [id] })
-    await db.execute({ sql: "DELETE FROM lideres WHERE id = ?", args: [id] })
+    await db.batch([
+      { sql: "DELETE FROM feedback_itens WHERE liderId = ?", args: [id] },
+      { sql: "DELETE FROM semanas WHERE liderId = ?", args: [id] },
+      { sql: "DELETE FROM cidades WHERE liderId = ?", args: [id] },
+      { sql: "DELETE FROM lideres WHERE id = ?", args: [id] },
+    ])
   },
 
   async addCidade(liderId: string, cidade: Omit<Cidade, "id">): Promise<Lider> {
@@ -245,17 +261,9 @@ export const liderService = {
     await db.execute({
       sql: `INSERT INTO cidades (id, liderId, nome, estado, motoristasAtivos, passageirosAtivos, corridas, faturamento, ticketMedio, metaCorridas, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
-        cidadeId,
-        liderId,
-        cidade.nome,
-        cidade.estado,
-        cidade.motoristasAtivos,
-        cidade.passageirosAtivos,
-        cidade.corridas,
-        cidade.faturamento,
-        cidade.ticketMedio,
-        cidade.metaCorridas,
-        cidade.observacoes,
+        cidadeId, liderId, cidade.nome, cidade.estado,
+        cidade.motoristasAtivos, cidade.passageirosAtivos, cidade.corridas,
+        cidade.faturamento, cidade.ticketMedio, cidade.metaCorridas, cidade.observacoes,
       ],
     })
     return (await this.getById(liderId))!
@@ -378,12 +386,13 @@ export const liderService = {
       sql: "DELETE FROM feedback_itens WHERE liderId = ?",
       args: [liderId],
     })
-    for (const item of itens) {
-      await db.execute({
+
+    await db.batch(
+      itens.map((item) => ({
         sql: "INSERT INTO feedback_itens (liderId, criterio, nota, peso) VALUES (?, ?, ?, ?)",
-        args: [liderId, item.criterio, item.nota, item.peso],
-      })
-    }
+        args: [liderId, item.criterio, item.nota, item.peso] as InValue[],
+      }))
+    )
 
     const score = calcularScore(itens)
     const classificacao = calcularClassificacao(score)
@@ -419,12 +428,12 @@ async function recalcularScore(lider: Lider): Promise<void> {
     return item
   })
 
-  for (const item of feedbackItens) {
-    await db.execute({
+  await db.batch(
+    feedbackItens.map((item) => ({
       sql: "UPDATE feedback_itens SET nota = ? WHERE liderId = ? AND criterio = ?",
-      args: [item.nota, lider.id, item.criterio],
-    })
-  }
+      args: [item.nota, lider.id, item.criterio] as InValue[],
+    }))
+  )
 
   const score = calcularScore(feedbackItens)
   const classificacao = calcularClassificacao(score)
