@@ -149,19 +149,19 @@ function SemanaCard({ semana }: { semana: (typeof semanas)[0] }) {
         </div>
 
         {"alerta" in semana && semana.alerta && (
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
-            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-sm text-amber-800">{semana.alerta}</p>
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-800 dark:text-amber-300">{semana.alerta}</p>
           </div>
         )}
 
         <Separator />
 
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-emerald-800">Resultado esperado</p>
-            <p className="text-sm text-emerald-700">{semana.resultado}</p>
+            <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Resultado esperado</p>
+            <p className="text-sm text-emerald-700 dark:text-emerald-400">{semana.resultado}</p>
           </div>
         </div>
       </CardContent>
@@ -172,7 +172,7 @@ function SemanaCard({ semana }: { semana: (typeof semanas)[0] }) {
 export function RoteiroPage() {
   return (
     <div className="space-y-6">
-      <Card className="bg-gradient-to-r from-violet-50 to-blue-50 border-violet-200">
+      <Card className="bg-gradient-to-r from-violet-50 to-blue-50 dark:from-violet-950 dark:to-blue-950 border-violet-200 dark:border-violet-800">
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
             <div className="rounded-lg bg-violet-500 p-3 text-white">
@@ -276,17 +276,17 @@ export function RoteiroPage() {
             <div className="space-y-3">
               <h4 className="text-sm font-medium">Critérios de Classificação</h4>
               <div className="space-y-2">
-                <div className="flex items-center gap-2 p-2 rounded bg-emerald-50 border border-emerald-200">
+                <div className="flex items-center gap-2 p-2 rounded bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800">
                   <Badge variant="ouro">Ouro</Badge>
-                  <span className="text-sm text-emerald-700">Score ≥ 70 — Continuar / Novas cidades</span>
+                  <span className="text-sm text-emerald-700 dark:text-emerald-400">Score ≥ 70 — Continuar / Novas cidades</span>
                 </div>
-                <div className="flex items-center gap-2 p-2 rounded bg-yellow-50 border border-yellow-200">
+                <div className="flex items-center gap-2 p-2 rounded bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800">
                   <Badge variant="prata">Prata</Badge>
-                  <span className="text-sm text-yellow-700">Score ≥ 40 — Programa de recuperação</span>
+                  <span className="text-sm text-yellow-700 dark:text-yellow-400">Score ≥ 40 — Programa de recuperação</span>
                 </div>
-                <div className="flex items-center gap-2 p-2 rounded bg-red-50 border border-red-200">
+                <div className="flex items-center gap-2 p-2 rounded bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
                   <Badge variant="vermelho">Vermelho</Badge>
-                  <span className="text-sm text-red-700">Score {'<'} 40 — Avaliar substituição</span>
+                  <span className="text-sm text-red-700 dark:text-red-400">Score {'<'} 40 — Avaliar substituição</span>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-2">

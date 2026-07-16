@@ -61,14 +61,28 @@ export function CorporativosPage() {
     [lideres, corporativos]
   )
 
+  const colors = [
+    { icon: "bg-blue-500", border: "border-blue-200 dark:border-blue-800", bg: "bg-blue-50 dark:bg-blue-950" },
+    { icon: "bg-emerald-500", border: "border-emerald-200 dark:border-emerald-800", bg: "bg-emerald-50 dark:bg-emerald-950" },
+    { icon: "bg-orange-500", border: "border-orange-200 dark:border-orange-800", bg: "bg-orange-50 dark:bg-orange-950" },
+    { icon: "bg-violet-500", border: "border-violet-200 dark:border-violet-800", bg: "bg-violet-50 dark:bg-violet-950" },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {dados.map((d) => (
-          <Card key={d.id} className="overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{d.nome}</CardTitle>
-              <p className="text-xs text-muted-foreground">{d.regiao}</p>
+        {dados.map((d, i) => (
+          <Card key={d.id} className={`overflow-hidden border-l-4 ${colors[i % 4].border}`}>
+            <CardHeader className={`pb-2 ${colors[i % 4].bg}`}>
+              <div className="flex items-center gap-3">
+                <div className={`rounded-lg p-2 ${colors[i % 4].icon} text-white`}>
+                  <Trophy className="h-4 w-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm font-medium">{d.nome}</CardTitle>
+                  <p className="text-xs text-muted-foreground">{d.regiao}</p>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3 text-sm">
