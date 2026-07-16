@@ -1,7 +1,6 @@
 import type { Lider, Cidade, SemanaPrograma, FeedbackItem, Classificacao, ProgramStatus } from "@/types"
-import { lideres as mockLideres } from "@/mocks"
-
-let lideres: Lider[] = [...mockLideres]
+import type { InValue } from "@libsql/client"
+import { db } from "@/lib/db"
 
 function calcularScore(itens: FeedbackItem[]): number {
   const totalPeso = itens.reduce((a, i) => a + i.peso, 0)
@@ -47,147 +46,310 @@ function gerarFeedback(score: number, classificacao: Classificacao): string {
   return partes.join(" ")
 }
 
-async function delay(): Promise<void> {
-  return new Promise((r) => setTimeout(r, 50))
+async function getCidadesByLider(liderId: string): Promise<Cidade[]> {
+  const result = await db.execute({
+    sql: "SELECT * FROM cidades WHERE liderId = ?",
+    args: [liderId],
+  })
+  return result.rows.map((r) => ({
+    id: r.id as string,
+    nome: r.nome as string,
+    estado: r.estado as string,
+    motoristasAtivos: r.motoristasAtivos as number,
+    passageirosAtivos: r.passageirosAtivos as number,
+    corridas: r.corridas as number,
+    faturamento: r.faturamento as number,
+    ticketMedio: r.ticketMedio as number,
+    metaCorridas: r.metaCorridas as number,
+    observacoes: r.observacoes as string,
+  }))
+}
+
+async function getSemanasByLider(liderId: string): Promise<SemanaPrograma[]> {
+  const result = await db.execute({
+    sql: "SELECT * FROM semanas WHERE liderId = ? ORDER BY semana",
+    args: [liderId],
+  })
+  return result.rows.map((r) => ({
+    semana: r.semana as number,
+    tipo: r.tipo as SemanaPrograma["tipo"],
+    objetivo: r.objetivo as string,
+    acoesPlanejadas: r.acoesPlanejadas as string,
+    acoesExecutadas: r.acoesExecutadas as string,
+    dificuldades: r.dificuldades as string,
+    observacoes: r.observacoes as string,
+    nota: r.nota as number,
+    concluida: (r.concluida as number) === 1,
+  }))
+}
+
+async function getFeedbackItensByLider(liderId: string): Promise<FeedbackItem[]> {
+  const result = await db.execute({
+    sql: "SELECT * FROM feedback_itens WHERE liderId = ?",
+    args: [liderId],
+  })
+  return result.rows.map((r) => ({
+    criterio: r.criterio as string,
+    nota: r.nota as number,
+    peso: r.peso as number,
+  }))
+}
+
+async function getLiderCompleto(row: Record<string, unknown>): Promise<Lider> {
+  const id = row.id as string
+  const [cidades, semanas, feedbackItens] = await Promise.all([
+    getCidadesByLider(id),
+    getSemanasByLider(id),
+    getFeedbackItensByLider(id),
+  ])
+  return {
+    id,
+    nome: row.nome as string,
+    telefone: row.telefone as string,
+    whatsApp: row.whatsApp as string,
+    regiao: row.regiao as Lider["regiao"],
+    estado: row.estado as string,
+    status: row.status as Lider["status"],
+    mentorId: row.mentorId as string,
+    dataInicio: row.dataInicio as string,
+    observacoes: row.observacoes as string,
+    classificacao: row.classificacao as Classificacao,
+    score: row.score as number,
+    feedback: row.feedback as string,
+    programStatus: row.programStatus as ProgramStatus,
+    dataInicioPrograma: row.dataInicioPrograma as string,
+    cidades,
+    semanas,
+    feedbackItens,
+  }
 }
 
 export const liderService = {
   async getAll(): Promise<Lider[]> {
-    await delay()
-    return [...lideres]
+    const result = await db.execute("SELECT * FROM lideres ORDER BY id")
+    const lideres: Lider[] = []
+    for (const row of result.rows) {
+      lideres.push(await getLiderCompleto(row))
+    }
+    return lideres
   },
 
   async getById(id: string): Promise<Lider | undefined> {
-    await delay()
-    return lideres.find((l) => l.id === id)
+    const result = await db.execute({
+      sql: "SELECT * FROM lideres WHERE id = ?",
+      args: [id],
+    })
+    if (result.rows.length === 0) return undefined
+    return getLiderCompleto(result.rows[0])
   },
 
   async create(data: Omit<Lider, "id" | "cidades" | "semanas" | "classificacao" | "score" | "feedback" | "feedbackItens" | "status">): Promise<Lider> {
-    await delay()
-    const novo: Lider = {
-      ...data,
-      id: `L${String(lideres.length + 1).padStart(3, "0")}`,
-      status: "ativo",
-      cidades: [],
-      semanas: [
-        { semana: 1, tipo: "diagnostico", objetivo: "", acoesPlanejadas: "", acoesExecutadas: "", dificuldades: "", observacoes: "", nota: 0, concluida: false },
-        { semana: 2, tipo: "execucao", objetivo: "", acoesPlanejadas: "", acoesExecutadas: "", dificuldades: "", observacoes: "", nota: 0, concluida: false },
-        { semana: 3, tipo: "recuperacao", objetivo: "", acoesPlanejadas: "", acoesExecutadas: "", dificuldades: "", observacoes: "", nota: 0, concluida: false },
-        { semana: 4, tipo: "avaliacao", objetivo: "", acoesPlanejadas: "", acoesExecutadas: "", dificuldades: "", observacoes: "", nota: 0, concluida: false },
+    const countResult = await db.execute("SELECT COUNT(*) as cnt FROM lideres")
+    const nextIdx = (countResult.rows[0].cnt as number) + 1
+    const newId = `L${String(nextIdx).padStart(3, "0")}`
+
+    await db.execute({
+      sql: `INSERT INTO lideres (id, nome, telefone, whatsApp, regiao, estado, status, mentorId, dataInicio, observacoes, classificacao, score, feedback, programStatus, dataInicioPrograma) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        newId,
+        data.nome,
+        data.telefone,
+        data.whatsApp,
+        data.regiao,
+        data.estado,
+        "ativo",
+        data.mentorId,
+        data.dataInicio,
+        data.observacoes,
+        "prata",
+        0,
+        "",
+        "nao_iniciado",
+        "",
       ],
-      classificacao: "prata",
-      score: 0,
-      feedback: "",
-      feedbackItens: [
-        { criterio: "Meta", nota: 0, peso: 30 },
-        { criterio: "Comprometimento", nota: 0, peso: 20 },
-        { criterio: "Execução", nota: 0, peso: 20 },
-        { criterio: "Liderança", nota: 0, peso: 15 },
-        { criterio: "Participação", nota: 0, peso: 10 },
-        { criterio: "Resultado", nota: 0, peso: 5 },
-      ],
-      programStatus: "nao_iniciado",
-      dataInicioPrograma: "",
+    })
+
+    const semanasIniciais = [
+      { semana: 1, tipo: "diagnostico" },
+      { semana: 2, tipo: "execucao" },
+      { semana: 3, tipo: "recuperacao" },
+      { semana: 4, tipo: "avaliacao" },
+    ]
+    for (const s of semanasIniciais) {
+      await db.execute({
+        sql: `INSERT INTO semanas (liderId, semana, tipo, objetivo, acoesPlanejadas, acoesExecutadas, dificuldades, observacoes, nota, concluida) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [newId, s.semana, s.tipo, "", "", "", "", "", 0, 0],
+      })
     }
-    lideres.push(novo)
-    return novo
+
+    const feedbackInicial = [
+      { criterio: "Meta", peso: 30 },
+      { criterio: "Comprometimento", peso: 20 },
+      { criterio: "Execução", peso: 20 },
+      { criterio: "Liderança", peso: 15 },
+      { criterio: "Participação", peso: 10 },
+      { criterio: "Resultado", peso: 5 },
+    ]
+    for (const f of feedbackInicial) {
+      await db.execute({
+        sql: `INSERT INTO feedback_itens (liderId, criterio, nota, peso) VALUES (?, ?, ?, ?)`,
+        args: [newId, f.criterio, 0, f.peso],
+      })
+    }
+
+    return (await this.getById(newId))!
   },
 
   async update(id: string, data: Partial<Lider>): Promise<Lider> {
-    await delay()
-    const idx = lideres.findIndex((l) => l.id === id)
-    if (idx === -1) throw new Error("Líder não encontrado")
-    lideres[idx] = { ...lideres[idx], ...data }
-    return lideres[idx]
+    const existing = await this.getById(id)
+    if (!existing) throw new Error("Líder não encontrado")
+
+    const fields: string[] = []
+    const args: InValue[] = []
+
+    const updatable = [
+      "nome", "telefone", "whatsApp", "regiao", "estado", "status",
+      "mentorId", "dataInicio", "observacoes", "classificacao", "score",
+      "feedback", "programStatus", "dataInicioPrograma",
+    ] as const
+
+    for (const key of updatable) {
+      if (key in data) {
+        fields.push(`${key} = ?`)
+        args.push(data[key] as InValue)
+      }
+    }
+
+    if (fields.length > 0) {
+      args.push(id)
+      await db.execute({
+        sql: `UPDATE lideres SET ${fields.join(", ")} WHERE id = ?`,
+        args,
+      })
+    }
+
+    return (await this.getById(id))!
   },
 
   async delete(id: string): Promise<void> {
-    await delay()
-    lideres = lideres.filter((l) => l.id !== id)
+    await db.execute({ sql: "DELETE FROM feedback_itens WHERE liderId = ?", args: [id] })
+    await db.execute({ sql: "DELETE FROM semanas WHERE liderId = ?", args: [id] })
+    await db.execute({ sql: "DELETE FROM cidades WHERE liderId = ?", args: [id] })
+    await db.execute({ sql: "DELETE FROM lideres WHERE id = ?", args: [id] })
   },
 
   async addCidade(liderId: string, cidade: Omit<Cidade, "id">): Promise<Lider> {
-    await delay()
-    const lider = lideres.find((l) => l.id === liderId)
+    const lider = await this.getById(liderId)
     if (!lider) throw new Error("Líder não encontrado")
-    const novaCidade: Cidade = { ...cidade, id: crypto.randomUUID() }
-    lider.cidades.push(novaCidade)
-    return lider
+    const cidadeId = crypto.randomUUID()
+    await db.execute({
+      sql: `INSERT INTO cidades (id, liderId, nome, estado, motoristasAtivos, passageirosAtivos, corridas, faturamento, ticketMedio, metaCorridas, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        cidadeId,
+        liderId,
+        cidade.nome,
+        cidade.estado,
+        cidade.motoristasAtivos,
+        cidade.passageirosAtivos,
+        cidade.corridas,
+        cidade.faturamento,
+        cidade.ticketMedio,
+        cidade.metaCorridas,
+        cidade.observacoes,
+      ],
+    })
+    return (await this.getById(liderId))!
   },
 
   async updateCidade(liderId: string, cidadeId: string, data: Partial<Cidade>): Promise<Lider> {
-    await delay()
-    const lider = lideres.find((l) => l.id === liderId)
+    const lider = await this.getById(liderId)
     if (!lider) throw new Error("Líder não encontrado")
-    const cIdx = lider.cidades.findIndex((c) => c.id === cidadeId)
-    if (cIdx === -1) throw new Error("Cidade não encontrada")
-    lider.cidades[cIdx] = { ...lider.cidades[cIdx], ...data }
-    return lider
+
+    const fields: string[] = []
+    const args: InValue[] = []
+
+    const updatable = [
+      "nome", "estado", "motoristasAtivos", "passageirosAtivos",
+      "corridas", "faturamento", "ticketMedio", "metaCorridas", "observacoes",
+    ] as const
+
+    for (const key of updatable) {
+      if (key in data) {
+        fields.push(`${key} = ?`)
+        args.push(data[key] as InValue)
+      }
+    }
+
+    if (fields.length > 0) {
+      args.push(cidadeId, liderId)
+      await db.execute({
+        sql: `UPDATE cidades SET ${fields.join(", ")} WHERE id = ? AND liderId = ?`,
+        args,
+      })
+    }
+
+    return (await this.getById(liderId))!
   },
 
   async deleteCidade(liderId: string, cidadeId: string): Promise<Lider> {
-    await delay()
-    const lider = lideres.find((l) => l.id === liderId)
-    if (!lider) throw new Error("Líder não encontrado")
-    lider.cidades = lider.cidades.filter((c) => c.id !== cidadeId)
-    return lider
+    await db.execute({
+      sql: "DELETE FROM cidades WHERE id = ? AND liderId = ?",
+      args: [cidadeId, liderId],
+    })
+    return (await this.getById(liderId))!
   },
 
   async updateSemana(liderId: string, semanaIdx: number, data: Partial<SemanaPrograma>): Promise<Lider> {
-    await delay()
-    const lider = lideres.find((l) => l.id === liderId)
+    const lider = await this.getById(liderId)
     if (!lider) throw new Error("Líder não encontrado")
     if (!lider.semanas[semanaIdx]) throw new Error("Semana não encontrada")
-    lider.semanas[semanaIdx] = { ...lider.semanas[semanaIdx], ...data }
 
-    const allNotas = lider.semanas.map((s) => s.nota)
-    const avg =
-      allNotas.filter((n) => n > 0).reduce((a, b) => a + b, 0) /
-      Math.max(allNotas.filter((n) => n > 0).length, 1)
+    const semanaNum = semanaIdx + 1
+    const fields: string[] = []
+    const args: InValue[] = []
 
-    const totalCorridasLider = lider.cidades.reduce((a, c) => a + c.corridas, 0)
-    const metaScore =
-      totalCorridasLider >= 300
-        ? 100
-        : Math.round((totalCorridasLider / 300) * 100)
+    const updatable = ["objetivo", "acoesPlanejadas", "acoesExecutadas", "dificuldades", "observacoes", "nota", "concluida"] as const
+    for (const key of updatable) {
+      if (key in data) {
+        const val = key === "concluida" ? ((data[key] as boolean) ? 1 : 0) : data[key]
+        fields.push(`${key} = ?`)
+        args.push(val as InValue)
+      }
+    }
 
-    lider.feedbackItens = lider.feedbackItens.map((item) => {
-      if (item.criterio === "Meta") return { ...item, nota: metaScore }
-      if (item.criterio === "Execução") return { ...item, nota: Math.round(avg) }
-      if (item.criterio === "Comprometimento")
-        return { ...item, nota: Math.round(avg) }
-      return item
-    })
+    if (fields.length > 0) {
+      args.push(liderId, semanaNum)
+      await db.execute({
+        sql: `UPDATE semanas SET ${fields.join(", ")} WHERE liderId = ? AND semana = ?`,
+        args,
+      })
+    }
 
-    lider.score = calcularScore(lider.feedbackItens)
-    lider.classificacao = calcularClassificacao(lider.score)
-    lider.feedback = gerarFeedback(lider.score, lider.classificacao)
-    lider.status =
-      lider.score >= 60
-        ? "ativo"
-        : lider.score >= 30
-          ? "recuperacao"
-          : "inativo"
-
-    return lider
+    const updatedLider = (await this.getById(liderId))!
+    await recalcularScore(updatedLider)
+    return (await this.getById(liderId))!
   },
 
   async startProgram(liderId: string): Promise<Lider> {
-    await delay()
-    const lider = lideres.find((l) => l.id === liderId)
+    const lider = await this.getById(liderId)
     if (!lider) throw new Error("Líder não encontrado")
-    lider.programStatus = "semana_1"
-    lider.dataInicioPrograma = new Date().toISOString().split("T")[0]
-    return lider
+    await db.execute({
+      sql: "UPDATE lideres SET programStatus = ?, dataInicioPrograma = ? WHERE id = ?",
+      args: ["semana_1", new Date().toISOString().split("T")[0], liderId],
+    })
+    return (await this.getById(liderId))!
   },
 
   async concludeWeek(liderId: string, semanaIdx: number): Promise<Lider> {
-    await delay()
-    const lider = lideres.find((l) => l.id === liderId)
+    const lider = await this.getById(liderId)
     if (!lider) throw new Error("Líder não encontrado")
     if (!lider.semanas[semanaIdx]) throw new Error("Semana não encontrada")
 
-    lider.semanas[semanaIdx].concluida = true
+    const semanaNum = semanaIdx + 1
+    await db.execute({
+      sql: "UPDATE semanas SET concluida = 1 WHERE liderId = ? AND semana = ?",
+      args: [liderId, semanaNum],
+    })
 
     const nextStatus: Record<number, ProgramStatus> = {
       0: "semana_2",
@@ -195,47 +357,82 @@ export const liderService = {
       2: "semana_4",
       3: "finalizado",
     }
-    lider.programStatus = nextStatus[semanaIdx]
+    await db.execute({
+      sql: "UPDATE lideres SET programStatus = ? WHERE id = ?",
+      args: [nextStatus[semanaIdx], liderId],
+    })
 
     if (semanaIdx === 3) {
-      const allNotas = lider.semanas.map((s) => s.nota)
-      const avg = allNotas.filter((n) => n > 0).reduce((a, b) => a + b, 0) / Math.max(allNotas.filter((n) => n > 0).length, 1)
-      const totalCorridasLider = lider.cidades.reduce((a, c) => a + c.corridas, 0)
-      const metaScore = totalCorridasLider >= 300 ? 100 : Math.round((totalCorridasLider / 300) * 100)
-
-      lider.feedbackItens = lider.feedbackItens.map((item) => {
-        if (item.criterio === "Meta") return { ...item, nota: metaScore }
-        if (item.criterio === "Execução") return { ...item, nota: Math.round(avg) }
-        if (item.criterio === "Comprometimento") return { ...item, nota: Math.round(avg) }
-        return item
-      })
-
-      lider.score = calcularScore(lider.feedbackItens)
-      lider.classificacao = calcularClassificacao(lider.score)
-      lider.feedback = gerarFeedback(lider.score, lider.classificacao)
-      lider.status = lider.score >= 60 ? "ativo" : lider.score >= 30 ? "recuperacao" : "inativo"
+      const updatedLider = (await this.getById(liderId))!
+      await recalcularScore(updatedLider)
     }
 
-    return lider
+    return (await this.getById(liderId))!
   },
 
-  async updateFeedbackItens(
-    liderId: string,
-    itens: FeedbackItem[]
-  ): Promise<Lider> {
-    await delay()
-    const lider = lideres.find((l) => l.id === liderId)
+  async updateFeedbackItens(liderId: string, itens: FeedbackItem[]): Promise<Lider> {
+    const lider = await this.getById(liderId)
     if (!lider) throw new Error("Líder não encontrado")
-    lider.feedbackItens = itens
-    lider.score = calcularScore(itens)
-    lider.classificacao = calcularClassificacao(lider.score)
-    lider.feedback = gerarFeedback(lider.score, lider.classificacao)
-    lider.status =
-      lider.score >= 60
-        ? "ativo"
-        : lider.score >= 30
-          ? "recuperacao"
-          : "inativo"
-    return lider
+
+    await db.execute({
+      sql: "DELETE FROM feedback_itens WHERE liderId = ?",
+      args: [liderId],
+    })
+    for (const item of itens) {
+      await db.execute({
+        sql: "INSERT INTO feedback_itens (liderId, criterio, nota, peso) VALUES (?, ?, ?, ?)",
+        args: [liderId, item.criterio, item.nota, item.peso],
+      })
+    }
+
+    const score = calcularScore(itens)
+    const classificacao = calcularClassificacao(score)
+    const feedback = gerarFeedback(score, classificacao)
+    const status = score >= 60 ? "ativo" : score >= 30 ? "recuperacao" : "inativo"
+
+    await db.execute({
+      sql: "UPDATE lideres SET score = ?, classificacao = ?, feedback = ?, status = ? WHERE id = ?",
+      args: [score, classificacao, feedback, status, liderId],
+    })
+
+    return (await this.getById(liderId))!
   },
+}
+
+async function recalcularScore(lider: Lider): Promise<void> {
+  const allNotas = lider.semanas.map((s) => s.nota)
+  const avg =
+    allNotas.filter((n) => n > 0).reduce((a, b) => a + b, 0) /
+    Math.max(allNotas.filter((n) => n > 0).length, 1)
+
+  const totalCorridasLider = lider.cidades.reduce((a, c) => a + c.corridas, 0)
+  const metaScore =
+    totalCorridasLider >= 300
+      ? 100
+      : Math.round((totalCorridasLider / 300) * 100)
+
+  const feedbackItens = lider.feedbackItens.map((item) => {
+    if (item.criterio === "Meta") return { ...item, nota: metaScore }
+    if (item.criterio === "Execução") return { ...item, nota: Math.round(avg) }
+    if (item.criterio === "Comprometimento")
+      return { ...item, nota: Math.round(avg) }
+    return item
+  })
+
+  for (const item of feedbackItens) {
+    await db.execute({
+      sql: "UPDATE feedback_itens SET nota = ? WHERE liderId = ? AND criterio = ?",
+      args: [item.nota, lider.id, item.criterio],
+    })
+  }
+
+  const score = calcularScore(feedbackItens)
+  const classificacao = calcularClassificacao(score)
+  const feedback = gerarFeedback(score, classificacao)
+  const status = score >= 60 ? "ativo" : score >= 30 ? "recuperacao" : "inativo"
+
+  await db.execute({
+    sql: "UPDATE lideres SET score = ?, classificacao = ?, feedback = ?, status = ? WHERE id = ?",
+    args: [score, classificacao, feedback, status, lider.id],
+  })
 }

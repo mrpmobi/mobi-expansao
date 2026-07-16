@@ -3,7 +3,7 @@ import type { Lider, Corporativo, Diretor, Reuniao, Cidade, SemanaPrograma, Feed
 import { liderService } from "@/services/liderService"
 import { reuniaoService } from "@/services/reuniaoService"
 import { dashboardService } from "@/services/dashboardService"
-import { diretores as mockDiretores, corporativos as mockCorporativos } from "@/mocks"
+import { baseService } from "@/services/baseService"
 
 interface DataContextType {
   diretores: Diretor[]
@@ -33,8 +33,8 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | null>(null)
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [diretores] = useState<Diretor[]>(mockDiretores)
-  const [corporativos] = useState<Corporativo[]>(mockCorporativos)
+  const [diretores, setDiretores] = useState<Diretor[]>([])
+  const [corporativos, setCorporativos] = useState<Corporativo[]>([])
   const [lideres, setLideres] = useState<Lider[]>([])
   const [reunioes, setReunioes] = useState<Reuniao[]>([])
   const [indicadores, setIndicadores] = useState<DashboardIndicadores | null>(null)
@@ -55,14 +55,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setIndicadores(data)
   }, [])
 
+  const refreshBase = useCallback(async () => {
+    const [d, c] = await Promise.all([
+      baseService.getDiretores(),
+      baseService.getCorporativos(),
+    ])
+    setDiretores(d)
+    setCorporativos(c)
+  }, [])
+
   useEffect(() => {
     async function load() {
       setLoading(true)
+      await refreshBase()
       await Promise.all([refreshLideres(), refreshReunioes(), refreshIndicadores()])
       setLoading(false)
     }
     load()
-  }, [refreshLideres, refreshReunioes, refreshIndicadores])
+  }, [refreshBase, refreshLideres, refreshReunioes, refreshIndicadores])
 
   const addLider = useCallback(async (data: any) => {
     const novo = await liderService.create(data)
