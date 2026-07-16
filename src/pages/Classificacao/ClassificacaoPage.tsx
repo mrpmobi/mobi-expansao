@@ -80,25 +80,31 @@ export function ClassificacaoPage() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-        <Card className="bg-emerald-50 border-emerald-200">
+        <Card className="overflow-hidden border-l-4 border-l-emerald-500 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950">
           <CardContent className="p-4 text-center">
-            <Trophy className="h-8 w-8 text-emerald-600 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-emerald-700">{stats.ouro}</p>
-            <p className="text-sm text-emerald-600">Ouro ({stats.pctOuro.toFixed(0)}%)</p>
+            <div className="rounded-lg p-2 bg-emerald-500 text-white w-fit mx-auto mb-2">
+              <Trophy className="h-6 w-6" />
+            </div>
+            <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{stats.ouro}</p>
+            <p className="text-sm text-emerald-600 dark:text-emerald-400">Ouro ({stats.pctOuro.toFixed(0)}%)</p>
           </CardContent>
         </Card>
-        <Card className="bg-yellow-50 border-yellow-200">
+        <Card className="overflow-hidden border-l-4 border-l-yellow-500 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950">
           <CardContent className="p-4 text-center">
-            <Medal className="h-8 w-8 text-yellow-600 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-yellow-700">{stats.prata}</p>
-            <p className="text-sm text-yellow-600">Prata ({stats.pctPrata.toFixed(0)}%)</p>
+            <div className="rounded-lg p-2 bg-yellow-500 text-white w-fit mx-auto mb-2">
+              <Medal className="h-6 w-6" />
+            </div>
+            <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{stats.prata}</p>
+            <p className="text-sm text-yellow-600 dark:text-yellow-400">Prata ({stats.pctPrata.toFixed(0)}%)</p>
           </CardContent>
         </Card>
-        <Card className="bg-red-50 border-red-200">
+        <Card className="overflow-hidden border-l-4 border-l-red-500 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950">
           <CardContent className="p-4 text-center">
-            <ArrowDown className="h-8 w-8 text-red-600 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-red-700">{stats.vermelho}</p>
-            <p className="text-sm text-red-600">Vermelho ({stats.pctVermelho.toFixed(0)}%)</p>
+            <div className="rounded-lg p-2 bg-red-500 text-white w-fit mx-auto mb-2">
+              <ArrowDown className="h-6 w-6" />
+            </div>
+            <p className="text-2xl font-bold text-red-700 dark:text-red-300">{stats.vermelho}</p>
+            <p className="text-sm text-red-600 dark:text-red-400">Vermelho ({stats.pctVermelho.toFixed(0)}%)</p>
           </CardContent>
         </Card>
       </div>
@@ -196,7 +202,7 @@ export function ClassificacaoPage() {
                                 style={{ width: `${pct}%`, backgroundColor: totalCorridas >= 300 ? "#059669" : "#d97706" }}
                               />
                             </div>
-                            <span className={`text-xs font-medium ${totalCorridas >= 300 ? "text-emerald-600" : ""}`}>
+                            <span className={`text-xs font-medium ${totalCorridas >= 300 ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
                               {pct}%
                             </span>
                           </div>
@@ -308,7 +314,7 @@ export function ClassificacaoPage() {
                         <>
                           <p className="text-2xl font-bold">{formatNumber(total)}</p>
                           <Progress value={pct} className="h-2 mt-1" />
-                          <p className={`text-xs mt-1 ${atingiu ? "text-emerald-600" : "text-muted-foreground"}`}>
+                          <p className={`text-xs mt-1 ${atingiu ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
                             {atingiu ? "Meta atingida!" : `${pct}% da meta`}
                           </p>
                         </>
