@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { formatCurrency, formatNumber } from "@/utils"
+import { formatNumber } from "@/utils"
 
 export function ReunioesPage() {
   const { reunioes, lideres, corporativos, addReuniao, updateReuniao, deleteReuniao } = useData()
@@ -51,8 +51,6 @@ export function ReunioesPage() {
     motoristas: 0,
     passageiros: 0,
     corridas: 0,
-    faturamento: 0,
-    ticketMedio: 0,
     campanhas: "",
     visitas: 0,
     reunioes: 0,
@@ -75,11 +73,9 @@ export function ReunioesPage() {
   const resumo = useMemo(() => {
     const total = filtered.length
     const totalCorridas = filtered.reduce((a, r) => a + r.corridas, 0)
-    const totalFat = filtered.reduce((a, r) => a + r.faturamento, 0)
     const totalMotoristas = filtered.reduce((a, r) => a + r.motoristas, 0)
     const totalPassageiros = filtered.reduce((a, r) => a + r.passageiros, 0)
-    const ticketMedio = totalCorridas > 0 ? totalFat / totalCorridas : 0
-    return { total, totalCorridas, totalFat, totalMotoristas, totalPassageiros, ticketMedio }
+    return { total, totalCorridas, totalMotoristas, totalPassageiros }
   }, [filtered])
 
   function resetForm() {
@@ -92,8 +88,6 @@ export function ReunioesPage() {
       motoristas: 0,
       passageiros: 0,
       corridas: 0,
-      faturamento: 0,
-      ticketMedio: 0,
       campanhas: "",
       visitas: 0,
       reunioes: 0,
@@ -123,8 +117,6 @@ export function ReunioesPage() {
       motoristas: r.motoristas,
       passageiros: r.passageiros,
       corridas: r.corridas,
-      faturamento: r.faturamento,
-      ticketMedio: r.ticketMedio,
       campanhas: r.campanhas,
       visitas: r.visitas,
       reunioes: r.reunioes,
@@ -264,28 +256,6 @@ export function ReunioesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Faturamento</Label>
-                  <Input
-                    type="number"
-                    value={formData.faturamento}
-                    onChange={(e) =>
-                      setFormData({ ...formData, faturamento: Number(e.target.value) })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Ticket Médio</Label>
-                  <Input
-                    type="number"
-                    value={formData.ticketMedio}
-                    onChange={(e) =>
-                      setFormData({ ...formData, ticketMedio: Number(e.target.value) })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
                   <Label>Visitas</Label>
                   <Input
                     type="number"
@@ -360,7 +330,7 @@ export function ReunioesPage() {
           <CardTitle className="text-base">Resumo das Reuniões</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div>
               <p className="text-2xl font-bold">{resumo.total}</p>
               <p className="text-xs text-muted-foreground">Reuniões</p>
@@ -376,14 +346,6 @@ export function ReunioesPage() {
             <div>
               <p className="text-2xl font-bold">{formatNumber(resumo.totalCorridas)}</p>
               <p className="text-xs text-muted-foreground">Corridas</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{formatCurrency(resumo.totalFat)}</p>
-              <p className="text-xs text-muted-foreground">Faturamento</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{formatCurrency(resumo.ticketMedio)}</p>
-              <p className="text-xs text-muted-foreground">Ticket Médio</p>
             </div>
           </div>
         </CardContent>
@@ -406,7 +368,6 @@ export function ReunioesPage() {
                     <TableHead>Líder</TableHead>
                     <TableHead className="hidden md:table-cell">Corporativo</TableHead>
                     <TableHead className="text-right">Corridas</TableHead>
-                    <TableHead className="text-right">Faturamento</TableHead>
                     <TableHead className="hidden sm:table-cell">Situação</TableHead>
                     <TableHead className="w-[80px]">Ações</TableHead>
                   </TableRow>
@@ -431,9 +392,6 @@ export function ReunioesPage() {
                         </TableCell>
                         <TableCell className="text-right text-sm">
                           {formatNumber(r.corridas)}
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          {formatCurrency(r.faturamento)}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">
                           <Badge

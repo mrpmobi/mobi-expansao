@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { Search, Trophy, Medal, ArrowUp, ArrowDown } from "lucide-react"
+import { Search, Trophy, Medal, ArrowUp, ArrowDown, Target } from "lucide-react"
 import { useData } from "@/contexts/DataContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { formatCurrency, formatNumber } from "@/utils"
+import { formatNumber } from "@/utils"
 
 export function ClassificacaoPage() {
   const { lideres, corporativos } = useData()
@@ -40,7 +40,12 @@ export function ClassificacaoPage() {
           if (classFilter !== "todas" && l.classificacao !== classFilter) return false
           return true
         })
-        .sort((a, b) => b.score - a.score)
+        .sort((a, b) => {
+          const corridasA = a.cidades.reduce((s, c) => s + c.corridas, 0)
+          const corridasB = b.cidades.reduce((s, c) => s + c.corridas, 0)
+          if (corridasB !== corridasA) return corridasB - corridasA
+          return b.score - a.score
+        })
         .map((l, idx) => ({ ...l, pos: idx + 1 })),
     [lideres, search, classFilter]
   )
@@ -134,7 +139,7 @@ export function ClassificacaoPage() {
                 <TableHead className="hidden md:table-cell">Mentor</TableHead>
                 <TableHead className="text-right">Score</TableHead>
                 <TableHead className="hidden sm:table-cell text-right">Corridas</TableHead>
-                <TableHead className="hidden lg:table-cell text-right">Faturamento</TableHead>
+                <TableHead className="hidden lg:table-cell text-right">Meta 300</TableHead>
                 <TableHead>Classificação</TableHead>
                 <TableHead className="hidden md:table-cell">Sugestão</TableHead>
               </TableRow>
@@ -143,7 +148,6 @@ export function ClassificacaoPage() {
               {ranking.map((lider) => {
                 const mentor = corporativos.find((c) => c.id === lider.mentorId)
                 const totalCorridas = lider.cidades.reduce((a, c) => a + c.corridas, 0)
-                const totalFat = lider.cidades.reduce((a, c) => a + c.faturamento, 0)
                 return (
                   <TableRow
                     key={lider.id}
@@ -181,8 +185,23 @@ export function ClassificacaoPage() {
                     <TableCell className="hidden sm:table-cell text-right text-sm">
                       {formatNumber(totalCorridas)}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-right text-sm">
-                      {formatCurrency(totalFat)}
+                    <TableCell className="hidden lg:table-cell text-right">
+                      {(() => {
+                        const pct = totalCorridas >= 300 ? 100 : Math.round((totalCorridas / 300) * 100)
+                        return (
+                          <div className="flex items-center gap-2 justify-end">
+                            <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{ width: `${pct}%`, backgroundColor: totalCorridas >= 300 ? "#059669" : "#d97706" }}
+                              />
+                            </div>
+                            <span className={`text-xs font-medium ${totalCorridas >= 300 ? "text-emerald-600" : ""}`}>
+                              {pct}%
+                            </span>
+                          </div>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -280,12 +299,21 @@ export function ClassificacaoPage() {
                     </p>
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium mb-2">Faturamento</h4>
-                    <p className="text-2xl font-bold">
-                      {formatCurrency(
-                        selectedLider.cidades.reduce((a, c) => a + c.faturamento, 0)
-                      )}
-                    </p>
+                    <h4 className="text-sm font-medium mb-2">Meta 300 corridas</h4>
+                    {(() => {
+                      const total = selectedLider.cidades.reduce((a, c) => a + c.corridas, 0)
+                      const atingiu = total >= 300
+                      const pct = atingiu ? 100 : Math.round((total / 300) * 100)
+                      return (
+                        <>
+                          <p className="text-2xl font-bold">{formatNumber(total)}</p>
+                          <Progress value={pct} className="h-2 mt-1" />
+                          <p className={`text-xs mt-1 ${atingiu ? "text-emerald-600" : "text-muted-foreground"}`}>
+                            {atingiu ? "Meta atingida!" : `${pct}% da meta`}
+                          </p>
+                        </>
+                      )
+                    })()}
                   </div>
                   <div>
                     <h4 className="text-sm font-medium mb-2">Semanas Concluídas</h4>

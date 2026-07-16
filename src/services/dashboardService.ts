@@ -9,26 +9,26 @@ export const dashboardService = {
       (a, l) => a + l.cidades.reduce((b, c) => b + c.corridas, 0),
       0
     )
-    const totalFaturamento = lideres.reduce(
-      (a, l) => a + l.cidades.reduce((b, c) => b + c.faturamento, 0),
-      0
-    )
-    const metaGeral = lideres.reduce(
-      (a, l) => a + l.cidades.reduce((b, c) => b + c.metaCorridas, 0),
-      0
-    )
-    const ticketMedio = totalCorridas > 0 ? totalFaturamento / totalCorridas : 0
-    const percentualAtingido = metaGeral > 0 ? (totalCorridas / metaGeral) * 100 : 0
+    const META_POR_LIDER = 300
+
+    const lideresAcimaMeta = lideres.filter((l) => {
+      const totalDoLider = l.cidades.reduce((b, c) => b + c.corridas, 0)
+      return totalDoLider >= META_POR_LIDER
+    }).length
 
     return {
       totalLideres: lideres.length,
       totalCorporativos: 4,
       totalCidades,
       totalCorridas,
-      totalFaturamento,
-      ticketMedio,
-      metaGeral,
-      percentualAtingido,
+      lideresAtivos: lideres.filter((l) => l.status === "ativo").length,
+      lideresEmPrograma: lideres.filter(
+        (l) => l.programStatus !== "nao_iniciado" && l.programStatus !== "finalizado"
+      ).length,
+      lideresFinalizados: lideres.filter((l) => l.programStatus === "finalizado").length,
+      metaPrograma: lideres.length * META_POR_LIDER,
+      lideresAcimaMeta,
+      lideresAbaixoMeta: lideres.length - lideresAcimaMeta,
       lideresOuro: lideres.filter((l) => l.classificacao === "ouro").length,
       lideresPrata: lideres.filter((l) => l.classificacao === "prata").length,
       lideresVermelho: lideres.filter((l) => l.classificacao === "vermelho").length,

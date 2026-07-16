@@ -4,16 +4,19 @@ import {
   Building2,
   MapPin,
   Car,
-  DollarSign,
-  Target,
   Trophy,
-  TrendingUp,
   BarChart3,
+  PlayCircle,
+  CheckCircle2,
+  TrendingUp,
+  TrendingDown,
+  Award,
 } from "lucide-react"
 import { useData } from "@/contexts/DataContext"
 import { StatCard } from "@/components/shared/StatCard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import {
   BarChart,
   Bar,
@@ -28,7 +31,7 @@ import {
   Pie,
   Cell,
 } from "recharts"
-import { formatCurrency, formatNumber } from "@/utils"
+import { formatNumber } from "@/utils"
 
 const COLORS = {
   ouro: "#059669",
@@ -46,11 +49,7 @@ export function DashboardPage() {
         (a, l) => a + l.cidades.reduce((b, c) => b + Math.round(c.corridas * (0.5 + idx * 0.15)), 0),
         0
       )
-      const faturamento = lideres.reduce(
-        (a, l) => a + l.cidades.reduce((b, c) => b + c.faturamento * (0.5 + idx * 0.15), 0),
-        0
-      )
-      return { semana, corridas, faturamento }
+      return { semana, corridas }
     })
   }, [lideres])
 
@@ -70,7 +69,6 @@ export function DashboardPage() {
         return {
           nome: c.nome.split(" ")[0],
           corridas: lids.reduce((a, l) => a + l.cidades.reduce((b, ci) => b + ci.corridas, 0), 0),
-          faturamento: lids.reduce((a, l) => a + l.cidades.reduce((b, ci) => b + ci.faturamento, 0), 0),
         }
       }),
     [lideres, corporativos]
@@ -79,13 +77,30 @@ export function DashboardPage() {
   const topLideres = useMemo(
     () =>
       [...lideres]
-        .sort((a, b) => b.score - a.score)
+        .sort((a, b) => {
+          const corridasA = a.cidades.reduce((s, c) => s + c.corridas, 0)
+          const corridasB = b.cidades.reduce((s, c) => s + c.corridas, 0)
+          return corridasB - corridasA
+        })
         .slice(0, 10)
-        .map((l) => ({
-          nome: l.nome,
-          score: l.score,
-          corridas: l.cidades.reduce((a, c) => a + c.corridas, 0),
-        })),
+        .map((l) => {
+          const total = l.cidades.reduce((a, c) => a + c.corridas, 0)
+          return {
+            nome: l.nome,
+            corridas: total,
+            metaAtingida: total >= 300,
+            pct: Math.min(Math.round((total / 300) * 100), 100),
+          }
+        }),
+    [lideres]
+  )
+
+  const topCidades = useMemo(
+    () =>
+      [...lideres]
+        .flatMap((l) => l.cidades.map((c) => ({ nome: `${c.nome}/${c.estado}`, corridas: c.corridas, lider: l.nome })))
+        .sort((a, b) => b.corridas - a.corridas)
+        .slice(0, 10),
     [lideres]
   )
 
@@ -96,7 +111,7 @@ export function DashboardPage() {
           <p className="font-medium">{label}</p>
           {payload.map((p: any, i: number) => (
             <p key={i} style={{ color: p.color }}>
-              {p.name}: {p.name === "faturamento" ? formatCurrency(p.value) : formatNumber(p.value)}
+              {p.name}: {formatNumber(p.value)}
             </p>
           ))}
         </div>
@@ -123,13 +138,25 @@ export function DashboardPage() {
           colorClass="bg-blue-500 text-white"
         />
         <StatCard
-          title="Corporativos"
-          value={indicadores.totalCorporativos}
-          icon={Building2}
+          title="Líderes c/ Meta Atingida"
+          value={indicadores.lideresAcimaMeta}
+          icon={Award}
+          colorClass="bg-emerald-500 text-white"
+        />
+        <StatCard
+          title="Líderes em Programa"
+          value={indicadores.lideresEmPrograma}
+          icon={PlayCircle}
           colorClass="bg-violet-500 text-white"
         />
         <StatCard
-          title="Cidades"
+          title="Líderes Finalizados"
+          value={indicadores.lideresFinalizados}
+          icon={CheckCircle2}
+          colorClass="bg-cyan-500 text-white"
+        />
+        <StatCard
+          title="Total de Cidades"
           value={indicadores.totalCidades}
           icon={MapPin}
           colorClass="bg-emerald-500 text-white"
@@ -141,45 +168,51 @@ export function DashboardPage() {
           colorClass="bg-orange-500 text-white"
         />
         <StatCard
-          title="Faturamento Total"
-          value={indicadores.totalFaturamento}
-          type="currency"
-          icon={DollarSign}
-          colorClass="bg-green-500 text-white"
-        />
-        <StatCard
-          title="Ticket Médio"
-          value={indicadores.ticketMedio}
-          type="currency"
-          icon={TrendingUp}
-          colorClass="bg-cyan-500 text-white"
-        />
-        <StatCard
-          title="Meta Geral"
-          value={indicadores.metaGeral}
-          type="number"
-          icon={Target}
-          colorClass="bg-indigo-500 text-white"
-        />
-        <StatCard
-          title="Percentual Atingido"
-          value={indicadores.percentualAtingido}
-          type="percent"
-          icon={BarChart3}
-          colorClass={
-            indicadores.percentualAtingido >= 70
-              ? "bg-emerald-500 text-white"
-              : indicadores.percentualAtingido >= 40
-                ? "bg-yellow-500 text-white"
-                : "bg-red-500 text-white"
-          }
+          title="Corporativos"
+          value={indicadores.totalCorporativos}
+          icon={Building2}
+          colorClass="bg-violet-500 text-white"
         />
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Status do Programa</CardTitle>
+        </CardHeader>
+        <CardContent className="pb-4">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-6">
+            <div className="text-center p-2 rounded-lg bg-gray-50 border">
+              <p className="text-lg font-bold text-gray-500">{lideres.filter((l) => l.programStatus === "nao_iniciado").length}</p>
+              <p className="text-[10px] text-gray-500 truncate">Não iniciado</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-blue-50 border border-blue-200">
+              <p className="text-lg font-bold text-blue-600">{lideres.filter((l) => l.programStatus === "semana_1").length}</p>
+              <p className="text-[10px] text-blue-600 truncate">Semana 1</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-yellow-50 border border-yellow-200">
+              <p className="text-lg font-bold text-yellow-600">{lideres.filter((l) => l.programStatus === "semana_2").length}</p>
+              <p className="text-[10px] text-yellow-600 truncate">Semana 2</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-orange-50 border border-orange-200">
+              <p className="text-lg font-bold text-orange-600">{lideres.filter((l) => l.programStatus === "semana_3").length}</p>
+              <p className="text-[10px] text-orange-600 truncate">Semana 3</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-violet-50 border border-violet-200">
+              <p className="text-lg font-bold text-violet-600">{lideres.filter((l) => l.programStatus === "semana_4").length}</p>
+              <p className="text-[10px] text-violet-600 truncate">Semana 4</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-emerald-50 border border-emerald-200">
+              <p className="text-lg font-bold text-emerald-600">{lideres.filter((l) => l.programStatus === "finalizado").length}</p>
+              <p className="text-[10px] text-emerald-600 truncate">Finalizado</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Evolução Semanal</CardTitle>
+            <CardTitle className="text-base">Evolução Semanal de Corridas</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -189,7 +222,6 @@ export function DashboardPage() {
                 <YAxis className="text-xs" />
                 <Tooltip content={renderTooltip} />
                 <Line type="monotone" dataKey="corridas" stroke="#3b82f6" name="Corridas" strokeWidth={2} />
-                <Line type="monotone" dataKey="faturamento" stroke="#10b981" name="Faturamento" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -241,7 +273,7 @@ export function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Top 10 Líderes</CardTitle>
+            <CardTitle className="text-base">Top 10 Líderes por Corridas</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -257,20 +289,62 @@ export function DashboardPage() {
                         <div
                           className="h-full rounded-full transition-all"
                           style={{
-                            width: `${l.score}%`,
-                            backgroundColor:
-                              l.score >= 70 ? "#059669" : l.score >= 40 ? "#d97706" : "#dc2626",
+                            width: `${l.pct}%`,
+                            backgroundColor: l.metaAtingida ? "#059669" : "#d97706",
                           }}
                         />
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium">{l.score}%</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatNumber(l.corridas)} corridas
+                    <p className="text-sm font-medium">{formatNumber(l.corridas)}</p>
+                    <p className={`text-xs ${l.metaAtingida ? "text-emerald-600" : "text-muted-foreground"}`}>
+                      {l.pct}%
                     </p>
                   </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+        <Card className="border-emerald-200">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              Meta 300 Corridas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 grid-cols-2">
+              <div className="text-center p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                <p className="text-2xl font-bold text-emerald-600">{indicadores.lideresAcimaMeta}</p>
+                <p className="text-xs text-emerald-700">Acima da meta</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-red-50 border border-red-200">
+                <p className="text-2xl font-bold text-red-600">{indicadores.lideresAbaixoMeta}</p>
+                <p className="text-xs text-red-700">Abaixo da meta</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Top 10 Cidades</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {topCidades.map((c, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-muted-foreground w-5">{idx + 1}º</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate">{c.nome}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{c.lider}</p>
+                  </div>
+                  <span className="text-sm font-medium">{formatNumber(c.corridas)}</span>
                 </div>
               ))}
             </div>
@@ -302,12 +376,12 @@ export function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Em Risco</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold">{formatCurrency(indicadores.totalFaturamento)}</p>
-                <p className="text-xs text-muted-foreground">Faturamento</p>
-              </div>
-              <div className="text-center">
                 <p className="text-2xl font-bold">{formatNumber(indicadores.totalCorridas)}</p>
                 <p className="text-xs text-muted-foreground">Corridas</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold">{formatNumber(indicadores.metaPrograma)}</p>
+                <p className="text-xs text-muted-foreground">Meta</p>
               </div>
             </div>
           </CardContent>

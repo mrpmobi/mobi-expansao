@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { formatCurrency, formatNumber } from "@/utils"
+import { formatNumber } from "@/utils"
 
 export function CidadesPage() {
   const { lideres, corporativos, addCidade, updateCidade, deleteCidade } = useData()
@@ -54,8 +54,6 @@ export function CidadesPage() {
     motoristasAtivos: number
     passageirosAtivos: number
     corridas: number
-    faturamento: number
-    ticketMedio: number
     metaCorridas: number
     observacoes: string
   } | null>(null)
@@ -101,9 +99,7 @@ export function CidadesPage() {
         editCell.field
       )
         ? { [editCell.field]: Math.round(numValue) }
-        : ["faturamento", "ticketMedio"].includes(editCell.field)
-          ? { [editCell.field]: numValue }
-          : { [editCell.field]: editValue }
+        : { [editCell.field]: editValue }
     await updateCidade(editCell.liderId, editCell.cidadeId, data)
     setEditCell(null)
   }
@@ -163,9 +159,7 @@ export function CidadesPage() {
 
     const display =
       type === "number"
-        ? field === "faturamento" || field === "ticketMedio"
-          ? formatCurrency(value)
-          : formatNumber(value)
+        ? formatNumber(value)
         : value
 
     return (
@@ -187,8 +181,8 @@ export function CidadesPage() {
       motoristasAtivos: newCidade.motoristasAtivos,
       passageirosAtivos: newCidade.passageirosAtivos,
       corridas: newCidade.corridas,
-      faturamento: newCidade.faturamento,
-      ticketMedio: newCidade.ticketMedio,
+      faturamento: 0,
+      ticketMedio: 0,
       metaCorridas: newCidade.metaCorridas,
       observacoes: newCidade.observacoes,
     })
@@ -230,8 +224,6 @@ export function CidadesPage() {
                 motoristasAtivos: 0,
                 passageirosAtivos: 0,
                 corridas: 0,
-                faturamento: 0,
-                ticketMedio: 0,
                 metaCorridas: 0,
                 observacoes: "",
               })
@@ -312,28 +304,6 @@ export function CidadesPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Faturamento</Label>
-                    <Input
-                      type="number"
-                      value={newCidade.faturamento}
-                      onChange={(e) =>
-                        setNewCidade({ ...newCidade, faturamento: Number(e.target.value) })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Ticket Médio</Label>
-                    <Input
-                      type="number"
-                      value={newCidade.ticketMedio}
-                      onChange={(e) =>
-                        setNewCidade({ ...newCidade, ticketMedio: Number(e.target.value) })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label>Meta de Corridas</Label>
                     <Input
                       type="number"
@@ -371,8 +341,6 @@ export function CidadesPage() {
                     <TableHead className="text-right">Motoristas</TableHead>
                     <TableHead className="text-right">Passageiros</TableHead>
                     <TableHead className="text-right">Corridas</TableHead>
-                    <TableHead className="text-right">Faturamento</TableHead>
-                    <TableHead className="text-right">Ticket Médio</TableHead>
                     <TableHead className="text-right">Meta</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
@@ -411,24 +379,6 @@ export function CidadesPage() {
                           cidadeId={c.id}
                           field="corridas"
                           value={c.corridas}
-                          type="number"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <EditableCell
-                          liderId={c.liderId}
-                          cidadeId={c.id}
-                          field="faturamento"
-                          value={c.faturamento}
-                          type="number"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <EditableCell
-                          liderId={c.liderId}
-                          cidadeId={c.id}
-                          field="ticketMedio"
-                          value={c.ticketMedio}
                           type="number"
                         />
                       </TableCell>

@@ -1,4 +1,4 @@
-import type { Lider, Cidade, SemanaPrograma, FeedbackItem, Classificacao } from "@/types"
+import type { Lider, Cidade, SemanaPrograma, FeedbackItem, Classificacao, ProgramStatus } from "@/types"
 import { lideres as mockLideres } from "@/mocks"
 
 let lideres: Lider[] = [...mockLideres]
@@ -86,6 +86,8 @@ export const liderService = {
         { criterio: "Participação", nota: 0, peso: 10 },
         { criterio: "Resultado", nota: 0, peso: 5 },
       ],
+      programStatus: "nao_iniciado",
+      dataInicioPrograma: "",
     }
     lideres.push(novo)
     return novo
@@ -143,12 +145,11 @@ export const liderService = {
       allNotas.filter((n) => n > 0).reduce((a, b) => a + b, 0) /
       Math.max(allNotas.filter((n) => n > 0).length, 1)
 
-    const totalCidades = lider.cidades.length
-    const atingiramMeta = lider.cidades.filter(
-      (c) => c.corridas >= c.metaCorridas
-    ).length
+    const totalCorridasLider = lider.cidades.reduce((a, c) => a + c.corridas, 0)
     const metaScore =
-      totalCidades > 0 ? Math.round((atingiramMeta / totalCidades) * 100) : 0
+      totalCorridasLider >= 300
+        ? 100
+        : Math.round((totalCorridasLider / 300) * 100)
 
     lider.feedbackItens = lider.feedbackItens.map((item) => {
       if (item.criterio === "Meta") return { ...item, nota: metaScore }
@@ -167,6 +168,53 @@ export const liderService = {
         : lider.score >= 30
           ? "recuperacao"
           : "inativo"
+
+    return lider
+  },
+
+  async startProgram(liderId: string): Promise<Lider> {
+    await delay()
+    const lider = lideres.find((l) => l.id === liderId)
+    if (!lider) throw new Error("Líder não encontrado")
+    lider.programStatus = "semana_1"
+    lider.dataInicioPrograma = new Date().toISOString().split("T")[0]
+    return lider
+  },
+
+  async concludeWeek(liderId: string, semanaIdx: number): Promise<Lider> {
+    await delay()
+    const lider = lideres.find((l) => l.id === liderId)
+    if (!lider) throw new Error("Líder não encontrado")
+    if (!lider.semanas[semanaIdx]) throw new Error("Semana não encontrada")
+
+    lider.semanas[semanaIdx].concluida = true
+
+    const nextStatus: Record<number, ProgramStatus> = {
+      0: "semana_2",
+      1: "semana_3",
+      2: "semana_4",
+      3: "finalizado",
+    }
+    lider.programStatus = nextStatus[semanaIdx]
+
+    if (semanaIdx === 3) {
+      const allNotas = lider.semanas.map((s) => s.nota)
+      const avg = allNotas.filter((n) => n > 0).reduce((a, b) => a + b, 0) / Math.max(allNotas.filter((n) => n > 0).length, 1)
+      const totalCorridasLider = lider.cidades.reduce((a, c) => a + c.corridas, 0)
+      const metaScore = totalCorridasLider >= 300 ? 100 : Math.round((totalCorridasLider / 300) * 100)
+
+      lider.feedbackItens = lider.feedbackItens.map((item) => {
+        if (item.criterio === "Meta") return { ...item, nota: metaScore }
+        if (item.criterio === "Execução") return { ...item, nota: Math.round(avg) }
+        if (item.criterio === "Comprometimento") return { ...item, nota: Math.round(avg) }
+        return item
+      })
+
+      lider.score = calcularScore(lider.feedbackItens)
+      lider.classificacao = calcularClassificacao(lider.score)
+      lider.feedback = gerarFeedback(lider.score, lider.classificacao)
+      lider.status = lider.score >= 60 ? "ativo" : lider.score >= 30 ? "recuperacao" : "inativo"
+    }
 
     return lider
   },

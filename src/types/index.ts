@@ -2,6 +2,7 @@ export type Regiao = "Norte" | "Nordeste" | "Centro-Oeste" | "Sudeste" | "Sul"
 export type StatusLider = "ativo" | "inativo" | "recuperacao"
 export type Classificacao = "ouro" | "prata" | "vermelho"
 export type SemanaTipo = "diagnostico" | "execucao" | "recuperacao" | "avaliacao"
+export type ProgramStatus = "nao_iniciado" | "semana_1" | "semana_2" | "semana_3" | "semana_4" | "finalizado"
 
 export interface Diretor {
   id: string
@@ -65,6 +66,8 @@ export interface Lider {
   score: number
   feedback: string
   feedbackItens: FeedbackItem[]
+  programStatus: ProgramStatus
+  dataInicioPrograma: string
 }
 
 export interface Reuniao {
@@ -77,8 +80,6 @@ export interface Reuniao {
   motoristas: number
   passageiros: number
   corridas: number
-  faturamento: number
-  ticketMedio: number
   campanhas: string
   visitas: number
   reunioes: number
@@ -91,10 +92,12 @@ export interface DashboardIndicadores {
   totalCorporativos: number
   totalCidades: number
   totalCorridas: number
-  totalFaturamento: number
-  ticketMedio: number
-  metaGeral: number
-  percentualAtingido: number
+  lideresAtivos: number
+  lideresEmPrograma: number
+  lideresFinalizados: number
+  metaPrograma: number
+  lideresAcimaMeta: number
+  lideresAbaixoMeta: number
   lideresOuro: number
   lideresPrata: number
   lideresVermelho: number

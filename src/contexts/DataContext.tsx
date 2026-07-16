@@ -23,6 +23,8 @@ interface DataContextType {
   deleteCidade: (liderId: string, cidadeId: string) => Promise<Lider>
   updateSemana: (liderId: string, semanaIdx: number, data: Partial<SemanaPrograma>) => Promise<Lider>
   updateFeedbackItens: (liderId: string, itens: FeedbackItem[]) => Promise<Lider>
+  startProgram: (liderId: string) => Promise<Lider>
+  concludeWeek: (liderId: string, semanaIdx: number) => Promise<Lider>
   addReuniao: (data: Omit<Reuniao, "id">) => Promise<Reuniao>
   updateReuniao: (id: string, data: Partial<Reuniao>) => Promise<Reuniao>
   deleteReuniao: (id: string) => Promise<void>
@@ -117,6 +119,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return lider
   }, [refreshLideres, refreshIndicadores])
 
+  const startProgram = useCallback(async (liderId: string) => {
+    const lider = await liderService.startProgram(liderId)
+    await refreshLideres()
+    await refreshIndicadores()
+    return lider
+  }, [refreshLideres, refreshIndicadores])
+
+  const concludeWeek = useCallback(async (liderId: string, semanaIdx: number) => {
+    const lider = await liderService.concludeWeek(liderId, semanaIdx)
+    await refreshLideres()
+    await refreshIndicadores()
+    return lider
+  }, [refreshLideres, refreshIndicadores])
+
   const addReuniao = useCallback(async (data: Omit<Reuniao, "id">) => {
     const nova = await reuniaoService.create(data)
     await refreshReunioes()
@@ -154,6 +170,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         deleteCidade,
         updateSemana,
         updateFeedbackItens,
+        startProgram,
+        concludeWeek,
         addReuniao,
         updateReuniao,
         deleteReuniao,
