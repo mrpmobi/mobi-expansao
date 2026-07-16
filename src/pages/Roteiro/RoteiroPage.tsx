@@ -83,8 +83,6 @@ const semanas = [
     objetivo: "Análise completa do ciclo de 30 dias.",
     atividades: [
       "Meta de corridas",
-      "Faturamento",
-      "Ticket médio",
       "Comprometimento",
       "Execução das ações",
       "Evolução da região",
