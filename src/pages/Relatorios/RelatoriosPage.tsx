@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { formatCurrency, formatNumber } from "@/utils"
+import { formatNumber } from "@/utils"
 import {
   BarChart,
   Bar,
@@ -42,12 +42,7 @@ export function RelatoriosPage() {
             a + l.cidades.reduce((b, c) => b + Math.round(c.corridas * (0.5 + idx * 0.15)), 0),
           0
         )
-        const faturamento = lideres.reduce(
-          (a, l) =>
-            a + l.cidades.reduce((b, c) => b + c.faturamento * (0.5 + idx * 0.15), 0),
-          0
-        )
-        return { semana, corridas, faturamento: Math.round(faturamento) }
+        return { semana, corridas }
       }),
     [lideres]
   )
@@ -69,7 +64,6 @@ export function RelatoriosPage() {
         regiao,
         lideres: lids.length,
         corridas: lids.reduce((a, l) => a + l.cidades.reduce((b, c) => b + c.corridas, 0), 0),
-        faturamento: lids.reduce((a, l) => a + l.cidades.reduce((b, c) => b + c.faturamento, 0), 0),
       }
     })
   }, [lideres])
@@ -85,16 +79,12 @@ export function RelatoriosPage() {
             ? Math.round(lids.reduce((a, l) => a + l.score, 0) / lids.length)
             : 0,
           corridas: lids.reduce((a, l) => a + l.cidades.reduce((b, ci) => b + ci.corridas, 0), 0),
-          faturamento: lids.reduce((a, l) => a + l.cidades.reduce((b, ci) => b + ci.faturamento, 0), 0),
         }
       }),
     [lideres, corporativos]
   )
 
   const totalCorridas = lideres.reduce((a, l) => a + l.cidades.reduce((b, c) => b + c.corridas, 0), 0)
-  const totalFat = lideres.reduce((a, l) => a + l.cidades.reduce((b, c) => b + c.faturamento, 0), 0)
-  const totalMeta = lideres.reduce((a, l) => a + l.cidades.reduce((b, c) => b + c.metaCorridas, 0), 0)
-  const pctGeral = totalMeta > 0 ? (totalCorridas / totalMeta) * 100 : 0
 
   const renderTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
@@ -103,7 +93,7 @@ export function RelatoriosPage() {
           <p className="font-medium">{label}</p>
           {payload.map((p: any, i: number) => (
             <p key={i} style={{ color: p.color }}>
-              {p.name}: {["faturamento"].includes(p.dataKey) ? formatCurrency(p.value) : formatNumber(p.value)}
+              {p.name}: {formatNumber(p.value)}
             </p>
           ))}
         </div>
@@ -123,22 +113,20 @@ export function RelatoriosPage() {
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">{formatCurrency(totalFat)}</p>
-            <p className="text-xs text-muted-foreground">Faturamento Total</p>
+            <p className="text-2xl font-bold">{lideres.length}</p>
+            <p className="text-xs text-muted-foreground">Total de Líderes</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-violet-600">{formatNumber(totalMeta)}</p>
-            <p className="text-xs text-muted-foreground">Meta Geral</p>
+            <p className="text-2xl font-bold">{lideres.reduce((a, l) => a + l.cidades.length, 0)}</p>
+            <p className="text-xs text-muted-foreground">Total de Cidades</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className={`text-2xl font-bold ${pctGeral >= 70 ? "text-emerald-600" : pctGeral >= 40 ? "text-yellow-600" : "text-red-600"}`}>
-              {pctGeral.toFixed(1)}%
-            </p>
-            <p className="text-xs text-muted-foreground">Meta Atingida</p>
+            <p className="text-2xl font-bold text-violet-600">{lideres.filter((l) => l.programStatus === "finalizado").length}</p>
+            <p className="text-xs text-muted-foreground">Programas Finalizados</p>
           </CardContent>
         </Card>
       </div>
@@ -154,7 +142,7 @@ export function RelatoriosPage() {
         <TabsContent value="evolucao" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Evolução Semanal</CardTitle>
+              <CardTitle className="text-base">Evolução Semanal de Corridas</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={350}>
@@ -164,7 +152,6 @@ export function RelatoriosPage() {
                   <YAxis />
                   <Tooltip content={renderTooltip} />
                   <Line type="monotone" dataKey="corridas" stroke={COLORS.blue} name="Corridas" strokeWidth={2} />
-                  <Line type="monotone" dataKey="faturamento" stroke={COLORS.emerald} name="Faturamento" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -224,7 +211,7 @@ export function RelatoriosPage() {
         <TabsContent value="regiao" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Desempenho por Região</CardTitle>
+              <CardTitle className="text-base">Corridas por Região</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={350}>
@@ -234,7 +221,6 @@ export function RelatoriosPage() {
                   <YAxis />
                   <Tooltip content={renderTooltip} />
                   <Bar dataKey="corridas" fill={COLORS.blue} name="Corridas" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="faturamento" fill={COLORS.emerald} name="Faturamento" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -274,7 +260,6 @@ export function RelatoriosPage() {
                   <th className="text-right p-3 font-medium text-muted-foreground">Líderes</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">Score Médio</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">Corridas</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground">Faturamento</th>
                 </tr>
               </thead>
               <tbody>
@@ -296,7 +281,6 @@ export function RelatoriosPage() {
                       </span>
                     </td>
                     <td className="p-3 text-right">{formatNumber(d.corridas)}</td>
-                    <td className="p-3 text-right">{formatCurrency(d.faturamento)}</td>
                   </tr>
                 ))}
               </tbody>
