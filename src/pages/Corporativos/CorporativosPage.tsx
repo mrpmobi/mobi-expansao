@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Users, MapPin, Car, Target, Trophy } from "lucide-react"
-import { formatCurrency, formatNumber } from "@/utils"
+import { formatNumber } from "@/utils"
 
 export function CorporativosPage() {
   const { lideres, corporativos } = useData()
@@ -134,7 +134,6 @@ export function CorporativosPage() {
                   <TableHead>Líder</TableHead>
                   <TableHead className="text-right">Cidades</TableHead>
                   <TableHead className="text-right">Corridas</TableHead>
-                  <TableHead className="text-right">Faturamento</TableHead>
                   <TableHead className="text-right">Score</TableHead>
                   <TableHead>Classificação</TableHead>
                   <TableHead>Semanas</TableHead>
@@ -143,7 +142,7 @@ export function CorporativosPage() {
               <TableBody>
                 {d.lids.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       Nenhum líder vinculado
                     </TableCell>
                   </TableRow>
@@ -153,13 +152,11 @@ export function CorporativosPage() {
                     .map((l) => {
                       const concluidas = l.semanas.filter((s) => s.concluida).length
                       const totalCorridas = l.cidades.reduce((a, c) => a + c.corridas, 0)
-                      const totalFat = l.cidades.reduce((a, c) => a + c.faturamento, 0)
                       return (
                         <TableRow key={l.id}>
                           <TableCell className="font-medium">{l.nome}</TableCell>
                           <TableCell className="text-right">{l.cidades.length}</TableCell>
                           <TableCell className="text-right">{formatNumber(totalCorridas)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(totalFat)}</TableCell>
                           <TableCell className="text-right">{l.score}%</TableCell>
                           <TableCell>
                             <Badge
